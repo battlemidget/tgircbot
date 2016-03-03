@@ -39,9 +39,7 @@ sub message_from_irc_to_tg {
 	    text    => ('<' . $irc_message->{from} . '> ' . $irc_message->{text}),
 	}, sub {
 	    my ($ua, $tx) = @_;
-	    if ($tx->success) {
-		say "sendMessage success";
-	    } else {
+	    unless ($tx->success) {
 		say "sendMessage failed";
 	    }
 	});
