@@ -55,18 +55,19 @@ sub tg_get_updates {
         { offset => $max_update_id + 1 },
         sub {
             my ($ua, $tx) = @_;
-            say "getUpdates " . ($tx->success ? "success" : "failed");
-            if (!$tx->success) {
-                say Mojo::Util::dumper( $tx->error );
+            unless ($tx->success) {
+                say "getUpdates failed: " . Mojo::Util::dumper( $tx->error );
+                return;
             }
-            return unless $tx->success;
             
             my $res = $tx->res->json;
             for (@{$res->{result}}) {
                 $max_update_id = max($max_update_id, $_->{update_id});
-		next unless $CONTEXT->{telegram_group_chat_id} == $_->{message}{chat}{id};
-
-                message_from_tg_to_irc($_->{message});
+                if ($CONTEXT->{telegram_group_chat_id} == $_->{message}{chat}{id}) {
+                    message_from_tg_to_irc($_->{message});
+                } else {
+                    say "Unknown chat_id: " . Mojo::Util::dumper($_);
+                }
             }
         }
     );
