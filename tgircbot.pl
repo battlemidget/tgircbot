@@ -41,10 +41,17 @@ sub message_from_irc_to_tg {
 
     my ($irc_message) = @_;
 
+    my $from = $irc_message->{from};
+    if ($from =~ /^slackbot/) {
+        $from = "";
+    } else {
+        $from = "<$from>";
+    }
+
     $tg->api_request(
 	sendMessage => {
 	    chat_id => $chat_id,
-	    text    => ('<' . $irc_message->{from} . '> ' . $irc_message->{text}),
+	    text    => join(' ', $from, $irc_message->{text}),
 	}, sub {
 	    my ($ua, $tx) = @_;
 	    unless ($tx->success) {
