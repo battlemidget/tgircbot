@@ -24,7 +24,11 @@ sub message_from_tg_to_irc {
     my ($tg_message) = @_;
 
     if ($tg_message->{text} && $tg_message->{text} ne "") {
-        my $text = '<' . $tg_message->{from}{username} . '> ' . $tg_message->{text};
+        my $text = '<' . $tg_message->{from}{username} . '> ';
+        if ($tg_message->{reply_to_message}) {
+            $text .= $tg_message->{reply_to_message}{from}{username} . ": ";
+        }
+        $text .= $tg_message->{text};
         $irc->write(PRIVMSG => $channel, ":$text", sub {});
     } else {
         say "text-less message: " . Mojo::Util::dumper( $tg_message );
