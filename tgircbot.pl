@@ -41,17 +41,22 @@ sub message_from_irc_to_tg {
 
     my ($irc_message) = @_;
 
+    my $text = $irc_message->{text};
     my $from = $irc_message->{from};
     if ($from =~ /^slackbot/) {
         $from = "";
+        if ($text =~ s/\A ( <[a-zA-Z0-9_]+?> ) \s //x) {
+            my $real_nick = $1;
+            $text = "<\x{24e2}${real_nick}> $text";
+        }
     } else {
-        $from = "<$from>";
+        $from = "<$from> ";
     }
 
     $tg->api_request(
 	sendMessage => {
 	    chat_id => $chat_id,
-	    text    => join(' ', $from, $irc_message->{text}),
+	    text    => join('', $from, $text),
 	}, sub {
 	    my ($ua, $tx) = @_;
 	    unless ($tx->success) {
