@@ -45,8 +45,8 @@ sub message_from_irc_to_tg {
     my $from = $irc_message->{from};
     if ($from =~ /^slackbot/) {
         $from = "";
-        if ($text =~ s/\A ( <[a-zA-Z0-9_]+?> ) \s //x) {
-            my $real_nick = $1;
+        if ($text =~ s/\A ( <([a-zA-Z0-9_]+?)> ) \s //x) {
+            my $real_nick = $2;
             $text = "<\x{24e2}${real_nick}> $text";
         }
     } else {
