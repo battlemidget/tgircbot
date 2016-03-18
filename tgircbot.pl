@@ -66,7 +66,7 @@ sub message_from_irc_to_tg {
 }
 
 sub tg_get_updates {
-    return unless $CONTEXT->{tg_bot} || $CONTEXT->{telegram_group_chat_id};
+    return unless $CONTEXT->{tg_bot} && $CONTEXT->{telegram_group_chat_id};
 
     state $max_update_id = -1;
 
