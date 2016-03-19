@@ -24,12 +24,15 @@ sub message_from_tg_to_irc {
     my ($tg_message) = @_;
 
     if ($tg_message->{text} && $tg_message->{text} ne "") {
-        my $text = '<' . $tg_message->{from}{username} . '> ';
-        if ($tg_message->{reply_to_message}) {
-            $text .= $tg_message->{reply_to_message}{from}{username} . ": ";
+        my @lines = split /\n/, $tg_message->{text};
+        for my $line (@lines) {
+            my $text = '<' . $tg_message->{from}{username} . '> ';
+            if ($tg_message->{reply_to_message}) {
+                $text .= $tg_message->{reply_to_message}{from}{username} . ": ";
+            }
+            $text .= $line;
+            $irc->write(PRIVMSG => $channel, ":$text\n", sub {});
         }
-        $text .= $tg_message->{text};
-        $irc->write(PRIVMSG => $channel, ":$text", sub {});
     } else {
         say "text-less message: " . Mojo::Util::dumper( $tg_message );
     }
@@ -79,7 +82,7 @@ sub tg_get_updates {
                 say "getUpdates failed: " . Mojo::Util::dumper( $tx->error );
                 return;
             }
-            
+
             my $res = $tx->res->json;
             for (@{$res->{result}}) {
                 $max_update_id = max($max_update_id, $_->{update_id});
@@ -159,7 +162,7 @@ sub irc_init {
     $irc->register_default_event_handlers;
     $irc->connect(sub {});
 
-    return $irc;   
+    return $irc;
 }
 
 sub MAIN {
