@@ -32,6 +32,7 @@ sub message_from_tg_to_irc {
             }
             $text .= $line;
             $irc->write(PRIVMSG => $channel, ":$text\n", sub {});
+            sleep(1);
         }
     } else {
         say "text-less message: " . Mojo::Util::dumper( $tg_message );
