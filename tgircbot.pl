@@ -74,6 +74,7 @@ sub tg_get_updates {
 
     state $max_update_id = -1;
 
+    state $errors = 0;
     $CONTEXT->{tg_bot}->api_request(
         'getUpdates',
         { offset => $max_update_id + 1 },
@@ -81,6 +82,12 @@ sub tg_get_updates {
             my ($ua, $tx) = @_;
             unless ($tx->success) {
                 say "getUpdates failed: " . Mojo::Util::dumper( $tx->error );
+
+                $errors++;
+                if ($errors > 2) {
+                    $CONTEXT->{errors}++;
+                    $errors = 0;
+                }
                 return;
             }
 
@@ -108,7 +115,7 @@ sub tg_init {
                 my $r = $tx->res->json;
                 Mojo::Util::dumper(['getMe', $r]);
             } else {
-                die "getMe fail: " . Mojo::Util::dumper($tx->error);
+                $CONTEXT->{errors}++;
             }
         }
     );
@@ -128,6 +135,7 @@ sub irc_init {
     $irc->on(
         error => sub {
             my ($self, $message) = @_;
+            $CONTEXT->{errors}++;
             p($message);
         });
 
@@ -174,19 +182,18 @@ sub MAIN {
     $CONTEXT->{irc_channel} = $args{irc_channel};
     $CONTEXT->{telegram_group_chat_id} = $args{telegram_group_chat_id};
 
-    Mojo::IOLoop->timer(
-        1, sub {
-            $CONTEXT->{irc_bot} = irc_init(
-                $args{irc_nickname},
-                $args{irc_server},
-                $args{irc_channel},
-            );
-        });
+    Mojo::IOLoop->recurring( 3, sub { $CONTEXT->{irc_bot} //= irc_init($args{irc_nickname}, $args{irc_server}, $args{irc_channel}) });
+    Mojo::IOLoop->recurring( 5, sub { $CONTEXT->{tg_bot}  //= tg_init( $args{telegram_token} ) });
 
-    Mojo::IOLoop->timer(
-        3, sub {
-            $CONTEXT->{tg_bot} = tg_init( $args{telegram_token} );
-        });
+    Mojo::IOLoop->recurring(
+        7, sub {
+            if ($CONTEXT->{errors}) {
+                delete $CONTEXT->{irc_bot};
+                delete $CONTEXT->{tg_bot};
+                $CONTEXT->{errors}--;
+            }
+        }
+    );
 
     Mojo::IOLoop->start;
 }
