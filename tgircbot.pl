@@ -142,7 +142,7 @@ sub irc_init {
     $irc->on(
         irc_join => sub {
             my($self, $message) = @_;
-            warn "yay! i joined $message->{params}[0]";
+            p($message);
         });
 
     $irc->on(
