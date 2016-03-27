@@ -26,9 +26,12 @@ sub message_from_tg_to_irc {
     if ($tg_message->{text} && $tg_message->{text} ne "") {
         my @lines = split /\n/, $tg_message->{text};
         for my $line (@lines) {
-            my $text = '<' . $tg_message->{from}{username} . '> ';
+            my $from_name = $tg_message->{from}{username} // $tg_message->{from}{first_name};
+            my $text = '<' . $from_name . '> ';
             if ($tg_message->{reply_to_message}) {
-                $text .= $tg_message->{reply_to_message}{from}{username} . ": ";
+                my $x = $tg_message->{reply_to_message}{from};
+                my $n = $x->{username} // $x->{first_name};
+                $text .= $n . ": ";
             }
             $text .= $line;
             $irc->write(PRIVMSG => $channel, ":$text\n", sub {});
