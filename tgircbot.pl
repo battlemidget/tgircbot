@@ -164,13 +164,6 @@ sub irc_init {
             $irc->write(join => $channel);
         });
 
-    $irc->on(close => sub {
-                 Mojo::IOLoop->timer(
-                     5, sub {
-                         $irc->connect(sub{ });
-                     });
-             });
-
     $irc->register_default_event_handlers;
     $irc->connect(sub {});
 
