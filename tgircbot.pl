@@ -140,13 +140,13 @@ sub irc_init {
             my ($self, $message) = @_;
             $CONTEXT->{errors}++;
             p($message);
-        });
+        }) unless $irc->has_subscribers('error');
 
     $irc->on(
         irc_join => sub {
             my($self, $message) = @_;
             p($message);
-        });
+        }) unless $irc->has_subscribers('irc_join');
 
     $irc->on(
         irc_privmsg => sub {
@@ -156,13 +156,13 @@ sub irc_init {
 
 	    my $from_nick = IRC::Utils::parse_user($message->{prefix});
 	    message_from_irc_to_tg({ from => $from_nick, text => $text });
-        });
+        }) unless $irc->has_subscribers('irc_privmsg');
 
     $irc->on(
         irc_rpl_welcome => sub {
             say "-- connected, join $channel";
             $irc->write(join => $channel);
-        });
+        }) unless $irc->has_subscribers('irc_rpl_welcome');
 
     $irc->register_default_event_handlers;
     $irc->connect(sub {});
