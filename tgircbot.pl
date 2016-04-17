@@ -18,6 +18,7 @@ use WWW::Telegram::BotAPI;
 my $CONTEXT = {};
 
 sub message_from_tg_to_irc {
+    return if $CONTEXT->{errors};
     my $channel = $CONTEXT->{irc_channel} or return;
     my $irc = $CONTEXT->{irc_bot} or return;
 
@@ -43,6 +44,7 @@ sub message_from_tg_to_irc {
 }
 
 sub message_from_irc_to_tg {
+    return if $CONTEXT->{errors};
     my $chat_id = $CONTEXT->{telegram_group_chat_id} or return;
     my $tg = $CONTEXT->{tg_bot} or return;
 
@@ -128,8 +130,9 @@ sub tg_init {
 
 sub irc_init {
     my ($nick, $server, $channel) = @_;
+    my $irc;
 
-    my $irc = Mojo::IRC::UA->new(
+    $irc = Mojo::IRC::UA->new(
         nick => $nick,
         user => $nick,
         server => $server,
@@ -178,9 +181,6 @@ sub MAIN {
     $CONTEXT->{irc_channel} = $args{irc_channel};
     $CONTEXT->{telegram_group_chat_id} = $args{telegram_group_chat_id};
 
-    Mojo::IOLoop->recurring( 3, sub { $CONTEXT->{irc_bot} //= irc_init($args{irc_nickname}, $args{irc_server}, $args{irc_channel}) });
-    Mojo::IOLoop->recurring( 5, sub { $CONTEXT->{tg_bot}  //= tg_init( $args{telegram_token} ) });
-
     Mojo::IOLoop->recurring(
         7, sub {
             if ($CONTEXT->{errors}) {
@@ -188,6 +188,8 @@ sub MAIN {
                 delete $CONTEXT->{tg_bot};
                 $CONTEXT->{errors}--;
             }
+            $CONTEXT->{irc_bot} //= irc_init($args{irc_nickname}, $args{irc_server}, $args{irc_channel});
+            $CONTEXT->{tg_bot}  //= tg_init( $args{telegram_token} );
         }
     );
 
