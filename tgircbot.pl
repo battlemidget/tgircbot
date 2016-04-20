@@ -44,6 +44,7 @@ sub message_from_tg_to_irc {
 }
 
 sub message_from_irc_to_tg {
+    state $last_sent_text = "";
     return if $CONTEXT->{errors};
     my $chat_id = $CONTEXT->{telegram_group_chat_id} or return;
     my $tg = $CONTEXT->{tg_bot} or return;
@@ -62,10 +63,13 @@ sub message_from_irc_to_tg {
         $from = "<$from> ";
     }
 
+    my $tg_text = join('', $from, $text);
+    return if $last_sent_text eq $tg_text;
+    $last_sent_text = $tg_text;
     $tg->api_request(
 	sendMessage => {
 	    chat_id => $chat_id,
-	    text    => join('', $from, $text),
+	    text    => $tg_text,
 	}, sub {
 	    my ($ua, $tx) = @_;
 	    unless ($tx->success) {
