@@ -18,6 +18,7 @@ use WWW::Telegram::BotAPI;
 my $CONTEXT = {};
 
 sub message_from_tg_to_irc {
+    state $last_sent_text = "";
     return if $CONTEXT->{errors};
     my $channel = $CONTEXT->{irc_channel} or return;
     my $irc = $CONTEXT->{irc_bot} or return;
@@ -35,8 +36,11 @@ sub message_from_tg_to_irc {
                 $text .= $n . ": ";
             }
             $text .= $line;
-            $irc->write(PRIVMSG => $channel, ":$text\n", sub {});
-            sleep(1);
+            if ($last_sent_text ne $text) {
+                $last_sent_text = $text;
+                $irc->write(PRIVMSG => $channel, ":$text\n", sub {});
+                sleep(1);
+            }
         }
     } else {
         say "text-less message: " . Mojo::Util::dumper( $tg_message );
