@@ -171,12 +171,25 @@ sub irc_init {
 
     $irc->on(
         irc_rpl_welcome => sub {
-            say "-- connected, join $channel";
-            $irc->write(join => $channel);
+            say "-- connected";
+            $irc->join_channel(
+                $channel,
+                sub {
+                    my ($self, $err, $info) = @_;
+                    say "-- join $channel -- topic - $info->{topic}";
+                }
+            );
         }) unless $irc->has_subscribers('irc_rpl_welcome');
 
     $irc->register_default_event_handlers;
-    $irc->connect(sub {});
+    $irc->connect(sub {
+                      my ($self, $err, $info) = @_;
+                      if (!$err) {
+                          say "-- connected";
+                      } else {
+                          say "-- error connecting";
+                      }
+                  });
 
     return $irc;
 }
