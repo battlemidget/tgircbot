@@ -205,9 +205,13 @@ sub MAIN {
     Mojo::IOLoop->recurring(
         7, sub {
             if ($CONTEXT->{errors}) {
-                delete $CONTEXT->{irc_bot};
                 delete $CONTEXT->{tg_bot};
-                $CONTEXT->{errors}--;
+
+                $CONTEXT->{irc_bot}->disconnect(
+                    sub {
+                        delete $CONTEXT->{irc_bot};
+                        $CONTEXT->{errors}--;
+                    });
             }
             $CONTEXT->{irc_bot} //= irc_init($args{irc_nickname}, $args{irc_server}, $args{irc_channel});
             $CONTEXT->{tg_bot}  //= tg_init( $args{telegram_token} );
