@@ -211,7 +211,8 @@ sub MAIN {
                     sub {
                         delete $CONTEXT->{irc_bot};
                         $CONTEXT->{errors}--;
-                    });
+                    }
+                ) if $CONTEXT->{irc_bot};
             }
             $CONTEXT->{irc_bot} //= irc_init($args{irc_nickname}, $args{irc_server}, $args{irc_channel});
             $CONTEXT->{tg_bot}  //= tg_init( $args{telegram_token} );
