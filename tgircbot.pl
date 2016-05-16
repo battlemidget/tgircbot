@@ -181,13 +181,14 @@ sub irc_init {
             );
         }) unless $irc->has_subscribers('irc_rpl_welcome');
 
+    $irc->op_timeout(120);
     $irc->register_default_event_handlers;
     $irc->connect(sub {
                       my ($self, $err, $info) = @_;
                       if (!$err) {
                           say "-- connected";
                       } else {
-                          say "-- error connecting";
+                          say "-- error connecting -- $err";
                       }
                   });
 
