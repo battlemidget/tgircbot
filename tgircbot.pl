@@ -19,7 +19,7 @@ my $CONTEXT = {};
 
 sub message_from_tg_to_irc {
     state $last_sent_text = "";
-    return if $CONTEXT->{errors};
+
     my $channel = $CONTEXT->{irc_channel} or return;
     my $irc = $CONTEXT->{irc_bot} or return;
 
@@ -49,7 +49,7 @@ sub message_from_tg_to_irc {
 
 sub message_from_irc_to_tg {
     state $last_sent_text = "";
-    return if $CONTEXT->{errors};
+
     my $chat_id = $CONTEXT->{telegram_group_chat_id} or return;
     my $tg = $CONTEXT->{tg_bot} or return;
 
@@ -84,34 +84,25 @@ sub message_from_irc_to_tg {
 
 sub tg_get_updates {
     return unless $CONTEXT->{tg_bot} && $CONTEXT->{telegram_group_chat_id};
-
     state $max_update_id = -1;
 
-    state $errors = 0;
     $CONTEXT->{tg_bot}->api_request(
         'getUpdates',
-        { offset => $max_update_id + 1 },
+        { offset => $max_update_id + 1, timeout => 5 },
         sub {
             my ($ua, $tx) = @_;
-            unless ($tx->success) {
+            if ($tx->success) {
+                my $res = $tx->res->json;
+                for (@{$res->{result}}) {
+                    $max_update_id = max($max_update_id, $_->{update_id});
+                    if ($CONTEXT->{telegram_group_chat_id} == $_->{message}{chat}{id}) {
+                        message_from_tg_to_irc($_->{message});
+                    } else {
+                        say "Unknown chat_id: " . Mojo::Util::dumper($_);
+                    }
+                }
+            } else {
                 say "getUpdates failed: " . Mojo::Util::dumper( $tx->error );
-
-                $errors++;
-                if ($errors > 2) {
-                    $CONTEXT->{errors}++;
-                    $errors = 0;
-                }
-                return;
-            }
-
-            my $res = $tx->res->json;
-            for (@{$res->{result}}) {
-                $max_update_id = max($max_update_id, $_->{update_id});
-                if ($CONTEXT->{telegram_group_chat_id} == $_->{message}{chat}{id}) {
-                    message_from_tg_to_irc($_->{message});
-                } else {
-                    say "Unknown chat_id: " . Mojo::Util::dumper($_);
-                }
             }
         }
     );
@@ -120,19 +111,21 @@ sub tg_get_updates {
 sub tg_init {
     my ($token) = @_;
     my $tgbot = WWW::Telegram::BotAPI->new( token => $token, async => 1 );
-    $tgbot->api_request(
-        'getMe',
-        sub {
-            my ($ua, $tx) = @_;
-            if ($tx->success) {
-                my $r = $tx->res->json;
-                Mojo::Util::dumper(['getMe', $r]);
-            } else {
-                $CONTEXT->{errors}++;
-            }
+
+    my $get_me_cb;
+    $get_me_cb = sub  {
+        my ($ua, $tx) = @_;
+        if ($tx->success) {
+            my $r = $tx->res->json;
+            Mojo::Util::dumper(['getMe', $r]);
+            Mojo::IOLoop->recurring( 15, \&tg_get_updates );
+        } else {
+            Mojo::Util::dumper(['getMe Failed.', $tx->res->body]);
+            Mojo::IOLoop->timer( 5 => sub { $tgbot->api_request(getMe => $get_me_cb) });
         }
-    );
-    Mojo::IOLoop->recurring( 15, \&tg_get_updates );
+    };
+    Mojo::IOLoop->timer( 5 => sub { $tgbot->api_request(getMe => $get_me_cb) });
+
     return $tgbot;
 }
 
@@ -145,19 +138,14 @@ sub irc_init {
         user => $nick,
         server => $server,
     );
-
-    $irc->on(
-        error => sub {
-            my ($self, $message) = @_;
-            $CONTEXT->{errors}++;
-            p($message);
-        }) unless $irc->has_subscribers('error');
+    $irc->op_timeout(120);
+    $irc->register_default_event_handlers;
 
     $irc->on(
         irc_join => sub {
             my($self, $message) = @_;
             p($message);
-        }) unless $irc->has_subscribers('irc_join');
+        });
 
     $irc->on(
         irc_privmsg => sub {
@@ -167,7 +155,7 @@ sub irc_init {
 
 	    my $from_nick = IRC::Utils::parse_user($message->{prefix});
 	    message_from_irc_to_tg({ from => $from_nick, text => $text });
-        }) unless $irc->has_subscribers('irc_privmsg');
+        });
 
     $irc->on(
         irc_rpl_welcome => sub {
@@ -179,18 +167,13 @@ sub irc_init {
                     say "-- join $channel -- topic - $info->{topic}";
                 }
             );
-        }) unless $irc->has_subscribers('irc_rpl_welcome');
+        });
 
-    $irc->op_timeout(120);
-    $irc->register_default_event_handlers;
-    $irc->connect(sub {
-                      my ($self, $err, $info) = @_;
-                      if (!$err) {
-                          say "-- connected";
-                      } else {
-                          say "-- error connecting -- $err";
-                      }
-                  });
+    $irc->on(error => sub {
+                 my ($self, $message) = @_;
+                 $irc->connect(sub{});
+             });
+    $irc->connect(sub {});
 
     return $irc;
 }
@@ -203,22 +186,8 @@ sub MAIN {
     $CONTEXT->{irc_channel} = $args{irc_channel};
     $CONTEXT->{telegram_group_chat_id} = $args{telegram_group_chat_id};
 
-    Mojo::IOLoop->recurring(
-        7, sub {
-            if ($CONTEXT->{errors}) {
-                delete $CONTEXT->{tg_bot};
-
-                $CONTEXT->{irc_bot}->disconnect(
-                    sub {
-                        delete $CONTEXT->{irc_bot};
-                        $CONTEXT->{errors}--;
-                    }
-                ) if $CONTEXT->{irc_bot};
-            }
-            $CONTEXT->{irc_bot} //= irc_init($args{irc_nickname}, $args{irc_server}, $args{irc_channel});
-            $CONTEXT->{tg_bot}  //= tg_init( $args{telegram_token} );
-        }
-    );
+    $CONTEXT->{tg_bot}  = tg_init( $args{telegram_token} );
+    # $CONTEXT->{irc_bot} = irc_init($args{irc_nickname}, $args{irc_server}, $args{irc_channel});
 
     Mojo::IOLoop->start;
 }
