@@ -187,7 +187,7 @@ sub MAIN {
     $CONTEXT->{telegram_group_chat_id} = $args{telegram_group_chat_id};
 
     $CONTEXT->{tg_bot}  = tg_init( $args{telegram_token} );
-    # $CONTEXT->{irc_bot} = irc_init($args{irc_nickname}, $args{irc_server}, $args{irc_channel});
+    $CONTEXT->{irc_bot} = irc_init($args{irc_nickname}, $args{irc_server}, $args{irc_channel});
 
     Mojo::IOLoop->start;
 }
