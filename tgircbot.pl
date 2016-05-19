@@ -171,7 +171,7 @@ sub irc_init {
 
     $irc->on(error => sub {
                  my ($self, $message) = @_;
-                 $irc->connect(sub{});
+                 Mojo::IOLoop->timer( 10 => sub { $irc->connect(sub{}) } );
              });
     $irc->connect(sub {});
 
