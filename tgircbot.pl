@@ -88,7 +88,7 @@ sub tg_get_updates {
 
     $CONTEXT->{tg_bot}->api_request(
         'getUpdates',
-        { offset => $max_update_id + 1, timeout => 5 },
+        { offset => $max_update_id + 1, timeout => 60 },
         sub {
             my ($ua, $tx) = @_;
             if ($tx->success) {
@@ -111,6 +111,9 @@ sub tg_get_updates {
 sub tg_init {
     my ($token) = @_;
     my $tgbot = WWW::Telegram::BotAPI->new( token => $token, async => 1 );
+    if ($tgbot->agent->can("inactivity_timeout")) {
+        $tgbot->agent->inactivity_timeout(180);
+    }
 
     my $get_me_cb;
     $get_me_cb = sub  {
