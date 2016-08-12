@@ -84,11 +84,11 @@ sub message_from_irc_to_tg {
 
 sub tg_get_updates {
     return unless $CONTEXT->{tg_bot} && $CONTEXT->{telegram_group_chat_id};
-    state $max_update_id = -1;
+    state $max_update_id = 0;
 
     $CONTEXT->{tg_bot}->api_request(
         'getUpdates',
-        { offset => $max_update_id + 1, timeout => 60 },
+        { $max_update_id?(offset => $max_update_id):(), timeout => 60 },
         sub {
             my ($ua, $tx) = @_;
             if ($tx->success) {
