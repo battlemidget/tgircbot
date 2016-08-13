@@ -88,7 +88,7 @@ sub tg_get_updates {
 
     $CONTEXT->{tg_bot}->api_request(
         'getUpdates',
-        { $max_update_id?(offset => $max_update_id):(), timeout => 60 },
+        { timeout => 5 },
         sub {
             my ($ua, $tx) = @_;
             if ($tx->success) {
