@@ -3,8 +3,6 @@ use v5.18;
 use strict;
 use warnings;
 
-use Data::Printer;
-
 use List::Util qw(max);
 use Getopt::Long qw(GetOptions);
 use Mojo::JSON qw(decode_json);
@@ -30,9 +28,17 @@ sub message_from_tg_to_irc {
         for my $line (@lines) {
             my $from_name = $tg_message->{from}{username} // $tg_message->{from}{first_name};
             my $text = '<' . $from_name . '> ';
+
             if ($tg_message->{reply_to_message}) {
                 my $x = $tg_message->{reply_to_message}{from};
-                my $n = $x->{username} // $x->{first_name};
+
+                my $n;
+                if ($CONTEXT->{telegram_bot_id} eq $x->{id} && ($tg_message->{reply_to_message}{text} =~ m/\A ( <([^<>]+)> ) \s /x)) {
+                    $n = $2;
+                }
+
+                $n //= $x->{username} // $x->{first_name};
+
                 $text .= $n . ": ";
             }
             $text .= $line;
@@ -188,6 +194,8 @@ sub MAIN {
     $CONTEXT->{irc_nickname} = $args{irc_nickname};
     $CONTEXT->{irc_channel} = $args{irc_channel};
     $CONTEXT->{telegram_group_chat_id} = $args{telegram_group_chat_id};
+
+    $CONTEXT->{telegram_bot_id}  = substr($args{telegram_token}, 0, index($args{telegram_token}, ":"));
 
     $CONTEXT->{tg_bot}  = tg_init( $args{telegram_token} );
     $CONTEXT->{irc_bot} = irc_init($args{irc_nickname}, $args{irc_server}, $args{irc_channel});
