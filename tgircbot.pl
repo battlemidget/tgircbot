@@ -153,7 +153,6 @@ sub irc_init {
     $irc->on(
         irc_join => sub {
             my($self, $message) = @_;
-            p($message);
         });
 
     $irc->on(
