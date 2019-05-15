@@ -71,7 +71,7 @@ sub message_from_irc_to_tg {
         }
     } elsif ($from =~ /^g0v-bridge/) {
         $from = "";
-        if ($text =~ s/\A ( ([a-zA-Z0-9_]+?) \@ slack-legacy ) : \s //x) {
+        if ($text =~ s/\A ( (.+?) \@ slack-legacy ) : \s //x) {
             my $real_nick = $2;
             $text = "<\x{24e2}${real_nick}> $text";
         }
