@@ -24,7 +24,7 @@ sub message_from_tg_to_irc {
     my ($tg_message) = @_;
 
     if ($tg_message->{text} && $tg_message->{text} ne "") {
-        my @lines = split /\n/, $tg_message->{text};
+        my @lines = grep { ! /^\s+$/ } split /\n/, $tg_message->{text};
         for my $line (@lines) {
             my $from_name = $tg_message->{from}{username} // $tg_message->{from}{first_name};
             my $text = '<' . $from_name . '> ';
